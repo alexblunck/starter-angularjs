@@ -16,7 +16,18 @@ var browserify = require('browserify'),
           sass = require('gulp-sass'),
   autoprefixer = require('gulp-autoprefixer'),
         concat = require('gulp-concat'),
+   ngTemplates = require('gulp-ng-templates'),
+    ngAnnotate = require('gulp-ng-annotate'),
+       htmlmin = require('gulp-htmlmin'),
    browserSync = require('browser-sync');
+
+
+/**
+ * Options
+ */
+var options = {
+    // proxyServer: 'http://localhost:8000'
+};
 
 
 /**
@@ -32,6 +43,7 @@ gulp.task('build', [
     'clean',
     'browserify',
     'index',
+    'templates',
     'sass',
     'assets'
 ]);
@@ -42,13 +54,15 @@ gulp.task('build', [
  */
 gulp.task('watch', [
     'clean',
-    'browserSync',
     'watchTask',
     'watchify',
     'index',
+    'templates',
     'sass',
     'assets'
-]);
+], function () {
+    gulp.start(['browserSync']);
+});
 
 
 /**
@@ -66,6 +80,7 @@ gulp.task('browserify', function () {
         .pipe( source('bundle.js') )
         .pipe( buffer() )
         .pipe( sourcemaps.init({loadMaps: true}) )
+            .pipe( ngAnnotate() )
             .pipe( uglify() )
             .on('error', gutil.log)
         .pipe( sourcemaps.write('./') )
@@ -108,7 +123,7 @@ gulp.task('watchify', function () {
  */
 gulp.task('browserSync', function () {
 
-    browserSync({
+    var bsOptions = {
         browser: 'google chrome',
         online: false,
         logSnippet: false,
@@ -117,7 +132,14 @@ gulp.task('browserSync', function () {
         server: {
             baseDir: './dist'
         }
-    });
+    };
+
+    if (options.proxyServer) {
+        bsOptions.proxy = options.proxyServer;
+        delete bsOptions.server;
+    }
+
+    browserSync(bsOptions);
 });
 
 
@@ -129,6 +151,11 @@ gulp.task('watchTask', function () {
     gulp.watch('./src/index.html', ['index']);
     gulp.watch('./src/assets/**/*.*', ['assets']);
     gulp.watch('./src/sass/**/*.scss', ['sass']);
+    gulp.watch([
+        './src/components/**/*.tpl.html',
+        './src/shared/**/*.tpl.html',
+        './src/assets/**/*.svg'
+    ], ['templates']);
 });
 
 
@@ -138,8 +165,40 @@ gulp.task('watchTask', function () {
 gulp.task('index', function () {
 
     return gulp.src('./src/index.html')
+        .pipe( htmlmin({
+            removeComments: true,
+            collapseWhitespace: false,
+            preserveLineBreaks: true
+        }) )
         .pipe( gulp.dest('./dist') )
         .pipe( browserSync.stream() );
+});
+
+
+/**
+ * Task - Templates
+ */
+gulp.task('templates', function () {
+    gulp.src([
+        './src/shared/**/*.tpl.html',
+        './src/components/**/*.tpl.html',
+        './src/assets/**/*.svg',
+    ])
+    .pipe( htmlmin({
+        removeComments: true,
+        collapseWhitespace: true
+    }) )
+    .pipe( ngTemplates({
+        module: 'app',
+        standalone: false,
+        filename: 'templates.js',
+        path: function (path, base) {
+            return path.split(__dirname + '/src/')[1];
+        }
+    }) )
+    .pipe( uglify() )
+    .pipe( gulp.dest('./dist') )
+    .pipe( browserSync.stream() );
 });
 
 
@@ -151,7 +210,7 @@ gulp.task('sass', function () {
     return gulp.src('./src/sass/*.scss')
         .pipe( sourcemaps.init() )
             .pipe( sass({
-                outputStyle: 'compressed',
+                // outputStyle: 'compressed',
                 errLogToConsole: true
             }) )
             .on('error', function(err) {
