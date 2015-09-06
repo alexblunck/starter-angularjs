@@ -27,6 +27,7 @@ var browserify = require('browserify'),
  */
 var options = {
     // proxyServer: 'http://localhost:8000'
+    browser: 'google chrome canary'
 };
 
 
@@ -124,7 +125,7 @@ gulp.task('watchify', function () {
 gulp.task('browserSync', function () {
 
     var bsOptions = {
-        browser: 'google chrome',
+        browser: options.browser || 'google chrome',
         online: false,
         logSnippet: false,
         notify: false,
