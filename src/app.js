@@ -2,8 +2,8 @@
  * app.js
  */
 
-var bulk = require('bulk-require');
-var angular = require('angular');
+const angular = require('angular');
+const bulk = require('bulk-require');
 
 angular
     .module('app', []);

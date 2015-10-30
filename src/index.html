@@ -7,13 +7,14 @@
 
         <!-- CSS -->
         <link rel="stylesheet" type="text/css" href="app.css"/>
+    </head>
+    <body ng-controller="AppCtrl as ctrl">
+
+        <h1 ng-bind="ctrl.foo"></h1>
 
         <!-- JS -->
         <script src="bundle.js"></script>
         <!-- Uncomment following line if you want to use compiled templates -->
         <!-- <script src="templates.js"></script> -->
-    </head>
-    <body ng-controller="AppCtrl as ctrl">
-        <h1>{{ ctrl.foo }}</h1>
     </body>
 </html>

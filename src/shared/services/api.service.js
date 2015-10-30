@@ -1,9 +1,9 @@
 /**
  * Service
- * shared / services / ApiService
+ * ApiService
  */
 
-var angular = require('angular');
+const angular = require('angular');
 
 angular
     .module('app')
@@ -12,7 +12,7 @@ angular
 
 function ApiService () {
 
-    var service = {
+    let service = {
         get: get
     };
     return service;

@@ -1,13 +1,13 @@
 /**
  * Controller
- * components / app / AppCtrl
+ * AppCtrl
  */
 
-var angular = require('angular');
+const angular = require('angular');
 
- angular
-     .module('app')
-     .controller('AppCtrl', Controller);
+angular
+    .module('app')
+    .controller('AppCtrl', Controller);
 
 
 function Controller (ApiService) {
