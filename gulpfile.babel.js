@@ -3,260 +3,382 @@
  * gulpfile.babel.js
  */
 
-import gulp from 'gulp';
-import source from 'vinyl-source-stream';
-import buffer from 'vinyl-buffer';
-import del from 'del';
-import {argv} from 'yargs';
-import browserify from 'browserify';
-import bulkify from 'bulkify';
-import watchify from 'watchify';
-import babelify from 'babelify';
-import browserSync from 'browser-sync';
+import path from 'path'
+import gulp from 'gulp'
+import source from 'vinyl-source-stream'
+import buffer from 'vinyl-buffer'
+import del from 'del'
+import {argv} from 'yargs'
+import browserify from 'browserify'
+import watchify from 'watchify'
+import babelify from 'babelify'
+import browserSync from 'browser-sync'
 
-const $ = require('gulp-load-plugins')();
+const $ = require('gulp-load-plugins')()
 
 /**
- * Config
- *
- * @type {Object}
+ * Arguments
  */
-const config = {
-    dev: !argv.production,
-    bsBrowser: 'google chrome',
-    bsProxyServer: 'http://localhost:8090'
+const ARGS = {
+    production: argv.production,
+    sourcemaps: argv.sourcemaps
+}
+
+/**
+ * Paths
+ */
+const PATHS = {
+    src: './src',
+    sass: './src/sass',
+    build: './build'
 };
 
 /**
- * Default Task
- * Alias for "watch" task.
+ * Config
  */
-gulp.task('default', ['watch']);
+const CONFIG = {
+    proxyHost: 'localhost:8083'
+};
 
 /**
- * Build Task
- * Build app.
+ * Task: Build
+ * Build production ready version of the app.
  */
-gulp.task('build', ['clean', 'browserify', 'templates', 'sass', 'assets', 'index']);
+gulp.task('build', gulp.series(
+    clean,
+    gulp.parallel(
+        bundleApp,
+        templates,
+        sass,
+        copy
+    ),
+    size,
+    revision,
+    revisionReplace,
+    compress
+))
 
 /**
- * Watch Task
- * Build app, open browser with browser-sync, watch for changes
- * to source files and reload browser.
+ * Task: Watch
+ * build complete app, start development server &
+ * watch for changes.
  */
-gulp.task('watch', ['clean', 'watch:task', 'watchify', 'templates', 'sass', 'assets', 'index'], browserSyncTask);
+gulp.task('watch', gulp.series(
+    clean,
+    gulp.parallel(
+        bundleAppAndWatch,
+        templates,
+        sass,
+        copy
+    ),
+    server,
+    watch
+))
 
 /**
- * Browserify Task
- * Run browserify to compile javascript.
+ * Bundle app with ./src/index.js as the
+ * entry point.
+ *
+ * @return {stream}
  */
-gulp.task('browserify', () => {
-    let bundler = browserify('./src/app.js', { debug: config.dev });
+function bundleApp () {
+    return bundle(src('index.js'))
+}
 
-    // Transforms
-    bundler.transform(bulkify);
-    bundler.transform(babelify);
+/**
+ * Use browserify to bundle the application..
+ *
+ * @param  {string} entry - Path to entry file
+ *
+ * @return {stream}
+ */
+function bundle (entry) {
+    let bundler = browserify(entry, {debug: ARGS.sourcemaps})
 
-    return bundler.bundle()
-        .pipe($.plumber({ errorHandler: onError }))
+    bundler.transform('bulkify')
+    bundler.transform(babelify.configure({
+        presets: ['es2015']
+    }))
+
+    return bundler
+        .bundle()
         .pipe(source('bundle.js'))
         .pipe(buffer())
-        .pipe($.if(config.dev, $.sourcemaps.init({ loadMaps: true })))
-            .pipe($.ngAnnotate())
-            .pipe($.uglify())
-        .pipe($.if(config.dev, $.sourcemaps.write('./')))
-        .pipe(gulp.dest('./dist'));
-});
+            .pipe($.if(ARGS.sourcemaps, $.sourcemaps.init({loadMaps: true})))
+                .pipe($.ngAnnotate())
+                .pipe($.uglify())
+            .pipe($.if(ARGS.sourcemaps, $.sourcemaps.write('./')))
+            .pipe(gulp.dest(PATHS.build))
+}
 
 /**
- * Watchify Task
- * Run browserify to compile javascriptand watch for
- * changes using watchify to reduce compile time.
+ * Bundle app with ./src/index.js as the
+ * entry point, watch for changes and rebundle.
+ *
+ * @return {stream}
  */
-gulp.task('watchify', () => {
-    let options = watchify.args;
-    options.debug = true;
+function bundleAppAndWatch () {
+    return watchBundle(src('index.js'))
+}
 
-    var bundler = watchify(browserify('./src/app.js', options));
+/**
+ * Use watchify / browserify to bundle the
+ * application, watch for changes and rebundle.
+ *
+ * @param  {string} entry - Path to entry file
+ *
+ * @return {stream}
+ */
+function watchBundle (entry) {
+    let options = watchify.args
+    options.debug = true
 
-    // Transforms
-    bundler.transform(bulkify);
-    bundler.transform(babelify);
+    let bundler = watchify(browserify(entry, options))
+
+    bundler.transform('bulkify')
+    bundler.transform(babelify.configure({
+        presets: ['es2015']
+    }))
 
     function rebundle () {
-        return bundler.bundle()
-            .on('error', onError)
+        return bundler
+            .bundle()
+            .on('error', errorHandler)
             .pipe(source('bundle.js'))
             .pipe(buffer())
-            .pipe($.sourcemaps.init({ loadMaps: true }))
-            .pipe($.sourcemaps.write('./'))
-            .pipe(gulp.dest('./dist'))
-            .pipe(browserSync.stream());
+                .pipe($.sourcemaps.init({loadMaps: true}))
+                .pipe($.sourcemaps.write('./'))
+                .pipe(gulp.dest(PATHS.build))
+                .pipe(browserSync.stream())
     }
 
     bundler.on('update', rebundle);
     return rebundle();
-});
+}
 
 /**
- * Watch Task
- * Start watching for changes to relevant files.
+ * Watch for changes to certain files and
+ * run appropriate tasks,
+ *
+ * @param  {Function} done
+ *
+ * @return {stream}
  */
-gulp.task('watch:task', () => {
-    gulp.watch('./src/index.html', ['index']);
-    gulp.watch('./src/assets/**/*.*', ['assets']);
-    gulp.watch('./src/sass/**/*.scss', ['sass']);
+function watch (done) {
     gulp.watch([
-        './src/components/**/*.tpl.html',
-        './src/shared/**/*.tpl.html',
-        './src/assets/**/*.svg'
-    ], ['templates']);
-});
+        src('index.html')
+    ], copy)
+
+    gulp.watch([
+        path.join(PATHS.sass, '**/*.scss')
+    ], sass)
+
+    gulp.watch([
+        src('**/*.tpl.html'),
+        src('**/*.svg')
+    ], templates)
+
+    done()
+}
 
 /**
- * Templates Task
- * Compile all html, svg files and add to AngularJS $templateCache.
- */
-gulp.task('templates', () => {
-    return gulp.src([
-        './src/components/**/*.tpl.html',
-        './src/shared/**/*.tpl.html',
-        './src/assets/**/*.svg'
-    ])
-    .pipe($.plumber({ errorHandler: onError }))
-    .pipe($.imagemin())
-    .pipe($.htmlmin({ removeComments: true, collapseWhitespace: true }))
-    .pipe($.ngTemplates({
-        module: 'app',
-        standalone: false,
-        filename: 'templates.js',
-        path: path => path.split(__dirname + '/src/')[1]
-    }))
-    .pipe($.uglify())
-    .pipe(gulp.dest('./dist'))
-    .pipe(browserSync.stream());
-});
-
-/**
- * Sass Task
- * Process sass und inject changes into browser via browser-sync.
- */
-gulp.task('sass', () => {
-    return gulp.src('src/sass/*.scss', {})
-        .pipe($.if(config.dev, $.sourcemaps.init()))
-            .pipe($.plumber({ errorHandler: onError }))
-            .pipe($.sass({ outputStyle: (config.dev) ? undefined : 'compressed' }))
-            .pipe($.autoprefixer())
-            .pipe($.concat('app.css'))
-        .pipe($.if(config.dev, $.sourcemaps.write('./')))
-        .pipe(gulp.dest('./dist'))
-        .pipe(browserSync.stream({ match: '**/*.css' }));
-});
-
-/**
- * Assets Task
- * Optimize assets and copy them to the "dist" directory.
- */
-gulp.task('assets', () => {
-    return gulp.src('./src/assets/**/*.*')
-        .pipe($.plumber({ errorHandler: onError }))
-        .pipe($.imagemin({ optimizationLevel: 4, progressive: true }))
-        .pipe(gulp.dest('./dist/assets'))
-        .pipe(browserSync.stream());
-});
-
-/**
- * Index Task
- * Copy the index.html file to the "dist" directory.
- */
-gulp.task('index', () => {
-    return gulp.src('src/index.html')
-        .pipe($.htmlmin({ removeComments: true, collapseWhitespace: true }))
-        .pipe(gulp.dest('dist'))
-        .pipe(browserSync.stream());
-});
-
-/**
- * Prepare Revision Task
- * Create versioned versions of js / css files in "dist" directory
- * and create a "rev-manifest.json" file.
- */
-gulp.task('revision:prepare', () => {
-    return gulp.src(['dist/*.css', 'dist/*.js'])
-        .pipe($.rev())
-        .pipe(gulp.dest('dist'))
-        .pipe($.rev.manifest())
-        .pipe(gulp.dest('dist'));
-});
-
-/**
- * Revision Task
- * Replace mentions of static assets that are present in the
- * "rev-manifest.json" file.
- */
-gulp.task('revision', ['revision:prepare'], () => {
-    let manifest = gulp.src('dist/rev-manifest.json');
-
-    return gulp.src('dist/index.html')
-        .pipe($.revReplace({ manifest: manifest }))
-        .pipe(gulp.dest('dist'));
-});
-
-/**
- * Clean Task
- * Remove files / folders in "dist" directory.
- */
-gulp.task('clean', (cb) => {
-    del.sync(['dist']);
-    cb();
-});
-
-/**
- * List Task
- * Liast all tasks.
- */
-gulp.task('list', $.taskListing);
-
-/**
- * Start browser-sync
+ * Copy files into build dir.
  *
  * @return {void}
  */
-function browserSyncTask () {
-    var bsOptions = {
-        browser: config.bsBrowser || 'google chrome',
+function copy () {
+    const glob = [
+        src('index.html')
+    ]
+
+    return gulp.src(glob)
+        .pipe($.htmlmin({
+            removeComments: true,
+            collapseWhitespace: true
+        }))
+        .pipe(gulp.dest(PATHS.build))
+        .pipe(browserSync.stream())
+}
+
+/**
+ * Add all .tpl.html & .svg file to angular's
+ * $templateCache.
+ *
+ * @return {void}
+ */
+function templates () {
+    const glob = [
+        src('**/*.tpl.html'),
+        src('**/*.svg')
+    ]
+
+    return gulp.src(glob)
+        .pipe($.naturalSort())
+        .pipe($.plumber(errorHandler))
+        .pipe($.imagemin())
+        .pipe($.htmlmin({
+            removeComments: true,
+            collapseWhitespace: true
+        }))
+        .pipe($.ngTemplates({
+            module: 'app',
+            standalone: false,
+            filename: 'templates.js',
+            path: path => path.split(__dirname + '/src/')[1]
+        }))
+        .pipe($.uglify())
+        .pipe(gulp.dest(PATHS.build))
+        .pipe(browserSync.stream())
+}
+
+/**
+ * Compile sass.
+ *
+ * @return {stream}
+ */
+function sass () {
+    const glob = path.join(PATHS.sass, '*.scss')
+
+    return gulp.src(glob)
+        .pipe($.if(ARGS.sourcemaps, $.sourcemaps.init()))
+            .pipe($.plumber(errorHandler))
+            .pipe($.sass({
+                outputStyle: ARGS.production ? 'compressed' : undefined
+            }))
+            .pipe($.autoprefixer())
+            .pipe($.concat('bundle.css'))
+        .pipe($.if(ARGS.sourcemaps, $.sourcemaps.write('./')))
+        .pipe(gulp.dest(PATHS.build))
+        .pipe(browserSync.stream({ match: '**/*.css' }))
+}
+
+/**
+ * Version all js & css files in the build dir.
+ *
+ * @return {stream}
+ */
+function revision () {
+    const glob = [
+        path.join(PATHS.build, '*.js'),
+        path.join(PATHS.build, '*.css')
+    ]
+
+    return gulp.src(glob)
+        .pipe($.rev())
+        .pipe(gulp.dest(PATHS.build))
+        .pipe($.rev.manifest())
+        .pipe(gulp.dest(PATHS.build))
+}
+
+/**
+ * Replace file references in index.html sing the
+ * "rev-manifest.json" created by the "revision"
+ * task.
+ *
+ * @return {stream}
+ */
+function revisionReplace () {
+    const manifest = path.join(PATHS.build, 'rev-manifest.json')
+    const manifestStream = gulp.src(manifest);
+
+    return gulp.src(path.join(PATHS.build, 'index.html'))
+        .pipe($.revReplace({manifest: manifestStream}))
+        .pipe(gulp.dest(PATHS.build))
+}
+
+/**
+ * Use gzip to compress all js & css files in
+ * the build dir.
+ *
+ * @return {stream}
+ */
+function compress () {
+    const glob = [
+        path.join(PATHS.build, '*.js'),
+        path.join(PATHS.build, '*.css')
+    ]
+
+    return gulp.src(glob)
+        .pipe($.gzip())
+        .pipe(gulp.dest(PATHS.build))
+}
+
+/**
+ * Delete build dir.
+ *
+ * @return {void}
+ */
+function clean () {
+    return del(PATHS.build)
+}
+
+/**
+ * Start node server (server.js) & BrowserSync.
+ *
+ * @param  {function} done
+ *
+ * @return {stream}
+ */
+function server (done) {
+    let options = {
+        browser: 'google chrome',
         online: false,
         logSnippet: false,
         notify: false,
         ghostMode: false,
         server: {
-            baseDir: './dist'
+            baseDir: PATHS.build
         }
-    };
+    }
 
-    if (config.bsProxyServer) {
-        bsOptions.proxy = config.bsProxyServer;
-        delete bsOptions.server;
+    if (CONFIG.proxyHost) {
+        options.proxy = CONFIG.proxyHost
+        delete options.server
     }
 
     $.nodemon({
-        script: 'server.js',
+        script: './server.js',
         ignore: ['**.*']
     });
 
-    browserSync(bsOptions);
+    browserSync(options)
+    done()
 }
 
 /**
- * gulp-plumber error handler
+ * Log the size of files in build dir.
+ *
+ * @return {stream}
+ */
+function size () {
+    const glob = path.join(PATHS.build, '*')
+
+    return gulp.src(glob)
+        .pipe($.size({showFiles: true}))
+        .pipe($.size({gzip: true}));
+}
+
+/**
+ * gulp-plumber errorHandler.
  *
  * @param  {string} err
  *
  * @return {this}
  */
-function onError (err) {
+function errorHandler (err) {
     $.util.beep();
     $.util.log($.util.colors.red(err));
     this.emit('end');
     return this;
+}
+
+/**
+ * Helper to join file path with src path
+ *
+ * @param  {string} p Filepath
+ *
+ * @return {string}
+ */
+function src (p) {
+    return path.join(PATHS.src, p);
 }

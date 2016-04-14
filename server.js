@@ -4,18 +4,18 @@
 
 var express = require('express'),
         app = express(),
-       port = 8090;
+       port = 8083;
 
 /**
  * Middleware
  */
-app.use(express.static(__dirname + '/dist'));
+app.use(express.static(__dirname + '/build'));
 
 /**
  * Route all other requests to angular
  */
 app.get('*', function (req, res) {
-    res.sendFile(__dirname + '/dist/index.html');
+    res.sendFile(__dirname + '/build/index.html');
 });
 
 /**
