@@ -10,10 +10,6 @@ angular
     .controller('AppCtrl', Controller);
 
 
-function Controller (ApiService) {
-
-    this.foo = 'starter-angular';
-
-    ApiService.get();
-
+function Controller () {
+    this.name = 'starter-angular';
 }
