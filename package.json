@@ -1,8 +1,8 @@
 {
   "name": "starter-angular",
   "version": "1.0.0",
-  "description": "starter-angular",
-  "main": "src/app.js",
+  "description": "Starting point for angular 1.5+ application using babel, browserify & gulp 4",
+  "main": "src/index.js",
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1",
     "clean": "rm -rf ./node_modules"
