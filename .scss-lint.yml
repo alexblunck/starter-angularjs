@@ -1,0 +1,20 @@
+---
+linters:
+  Indentation:
+    enabled: false
+  PropertySortOrder:
+    enabled: false
+  ColorKeyword:
+    enabled: false
+  ColorVariable:
+    enabled: false
+  SelectorDepth:
+    enabled: false
+  QualifyingElement:
+    enabled: false
+  MergeableSelector:
+    enabled: false
+  SingleLinePerSelector:
+    enabled: false
+  ImportPath:
+    enabled: false
