@@ -1,15 +1,18 @@
 /**
- * starter-angular
- * index.js
+ * Module
+ * app
  */
 
-const angular = require('angular');
-const bulk = require('bulk-require');
+import angular from 'angular'
+
+import directives from './directives'
+import services from './services'
+
+import AppCtrl from './components/app/app.ctrl'
 
 angular
-    .module('app', []);
-
-bulk(__dirname, [
-    'components/**/*.js',
-    'shared/**/*.js'
-]);
+    .module('app', [
+        directives,
+        services
+    ])
+    .controller('AppCtrl', AppCtrl)

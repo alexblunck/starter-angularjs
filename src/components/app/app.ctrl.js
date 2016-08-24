@@ -3,13 +3,10 @@
  * AppCtrl
  */
 
-const angular = require('angular');
+export default function AppCtrl () {
 
-angular
-    .module('app')
-    .controller('AppCtrl', Controller);
+    const vm = this
+    vm.name = 'starter-angular'
 
 
-function Controller () {
-    this.name = 'starter-angular';
 }
