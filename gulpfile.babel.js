@@ -3,13 +3,16 @@
  * gulpfile.babel.js
  */
 
+import pkg from './package.json'
 import path from 'path'
+import git from 'git-rev-sync'
 import gulp from 'gulp'
 import source from 'vinyl-source-stream'
 import buffer from 'vinyl-buffer'
 import del from 'del'
 import {argv} from 'yargs'
 import browserify from 'browserify'
+import stringify from 'stringify'
 import watchify from 'watchify'
 import babelify from 'babelify'
 import browserSync from 'browser-sync'
@@ -29,16 +32,15 @@ const ARGS = {
  */
 const PATHS = {
     src: './src',
-    sass: './src/sass',
     build: './build'
-};
+}
 
 /**
  * Config
  */
 const CONFIG = {
-    proxyHost: 'localhost:8083'
-};
+    proxyHost: 'localhost:8095'
+}
 
 /**
  * Task: Build
@@ -48,14 +50,14 @@ gulp.task('build', gulp.series(
     clean,
     gulp.parallel(
         bundleApp,
-        templates,
         sass,
         copy
     ),
     size,
     revision,
     revisionReplace,
-    compress
+    compress,
+    zip
 ))
 
 /**
@@ -67,7 +69,6 @@ gulp.task('watch', gulp.series(
     clean,
     gulp.parallel(
         bundleAppAndWatch,
-        templates,
         sass,
         copy
     ),
@@ -95,7 +96,11 @@ function bundleApp () {
 function bundle (entry) {
     let bundler = browserify(entry, {debug: ARGS.sourcemaps})
 
-    bundler.transform('bulkify')
+    bundler.transform(stringify, {
+        appliesTo: { includeExtensions: ['.html', '.svg'] },
+        minifyAppliesTo: { includeExtensions: ['.html', '.svg'] },
+        minify: true
+    })
     bundler.transform(babelify.configure({
         presets: ['es2015']
     }))
@@ -135,7 +140,11 @@ function watchBundle (entry) {
 
     let bundler = watchify(browserify(entry, options))
 
-    bundler.transform('bulkify')
+    bundler.transform(stringify, {
+        appliesTo: { includeExtensions: ['.html', '.svg'] },
+        minifyAppliesTo: { includeExtensions: ['.html', '.svg'] },
+        minify: true
+    })
     bundler.transform(babelify.configure({
         presets: ['es2015']
     }))
@@ -152,8 +161,8 @@ function watchBundle (entry) {
                 .pipe(browserSync.stream())
     }
 
-    bundler.on('update', rebundle);
-    return rebundle();
+    bundler.on('update', rebundle)
+    return rebundle()
 }
 
 /**
@@ -170,13 +179,8 @@ function watch (done) {
     ], copy)
 
     gulp.watch([
-        path.join(PATHS.sass, '**/*.scss')
+        src('**/*.scss')
     ], sass)
-
-    gulp.watch([
-        src('**/*.tpl.html'),
-        src('**/*.svg')
-    ], templates)
 
     done()
 }
@@ -201,43 +205,12 @@ function copy () {
 }
 
 /**
- * Add all .tpl.html & .svg file to angular's
- * $templateCache.
- *
- * @return {void}
- */
-function templates () {
-    const glob = [
-        src('**/*.tpl.html'),
-        src('**/*.svg')
-    ]
-
-    return gulp.src(glob)
-        .pipe($.naturalSort())
-        .pipe($.plumber(errorHandler))
-        .pipe($.imagemin())
-        .pipe($.htmlmin({
-            removeComments: true,
-            collapseWhitespace: true
-        }))
-        .pipe($.ngTemplates({
-            module: 'app',
-            standalone: false,
-            filename: 'templates.js',
-            path: path => path.split(__dirname + '/src/')[1]
-        }))
-        .pipe($.uglify())
-        .pipe(gulp.dest(PATHS.build))
-        .pipe(browserSync.stream())
-}
-
-/**
  * Compile sass.
  *
  * @return {stream}
  */
 function sass () {
-    const glob = path.join(PATHS.sass, '*.scss')
+    const glob = src('*.scss')
 
     return gulp.src(glob)
         .pipe($.if(ARGS.sourcemaps, $.sourcemaps.init()))
@@ -279,7 +252,7 @@ function revision () {
  */
 function revisionReplace () {
     const manifest = path.join(PATHS.build, 'rev-manifest.json')
-    const manifestStream = gulp.src(manifest);
+    const manifestStream = gulp.src(manifest)
 
     return gulp.src(path.join(PATHS.build, 'index.html'))
         .pipe($.revReplace({manifest: manifestStream}))
@@ -304,6 +277,22 @@ function compress () {
 }
 
 /**
+ * Archive the contents on the build dir
+ * into a zip file.
+ *
+ * @return {stream}
+ */
+function zip () {
+    const glob = path.join(PATHS.build, '*')
+
+    const filename = `${pkg.name}-${git.short()}.zip`
+
+    return gulp.src(glob)
+        .pipe($.zip(filename))
+        .pipe(gulp.dest(PATHS.build))
+}
+
+/**
  * Delete build dir.
  *
  * @return {void}
@@ -322,6 +311,7 @@ function clean () {
 function server (done) {
     let options = {
         browser: 'google chrome',
+        port: 3095,
         online: false,
         logSnippet: false,
         notify: false,
@@ -339,7 +329,7 @@ function server (done) {
     $.nodemon({
         script: './server.js',
         ignore: ['**.*']
-    });
+    })
 
     browserSync(options)
     done()
@@ -355,7 +345,7 @@ function size () {
 
     return gulp.src(glob)
         .pipe($.size({showFiles: true}))
-        .pipe($.size({gzip: true}));
+        .pipe($.size({gzip: true}))
 }
 
 /**
@@ -366,10 +356,10 @@ function size () {
  * @return {this}
  */
 function errorHandler (err) {
-    $.util.beep();
-    $.util.log($.util.colors.red(err));
-    this.emit('end');
-    return this;
+    $.util.beep()
+    $.util.log($.util.colors.red(err))
+    this.emit('end')
+    return this
 }
 
 /**
@@ -380,5 +370,5 @@ function errorHandler (err) {
  * @return {string}
  */
 function src (p) {
-    return path.join(PATHS.src, p);
+    return path.join(PATHS.src, p)
 }
