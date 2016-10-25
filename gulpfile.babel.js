@@ -10,6 +10,7 @@ import gulp from 'gulp'
 import source from 'vinyl-source-stream'
 import buffer from 'vinyl-buffer'
 import del from 'del'
+import autoprefixer from 'autoprefixer'
 import {argv} from 'yargs'
 import browserify from 'browserify'
 import stringify from 'stringify'
@@ -94,7 +95,7 @@ function bundleApp () {
  * @return {stream}
  */
 function bundle (entry) {
-    let bundler = browserify(entry, {debug: ARGS.sourcemaps})
+    let bundler = browserify(entry, { debug: true })
 
     bundler.transform(stringify, {
         appliesTo: { includeExtensions: ['.html', '.svg'] },
@@ -109,10 +110,10 @@ function bundle (entry) {
         .bundle()
         .pipe(source('bundle.js'))
         .pipe(buffer())
-            .pipe($.if(ARGS.sourcemaps, $.sourcemaps.init({loadMaps: true})))
+            .pipe($.sourcemaps.init({ loadMaps: true }))
                 .pipe($.ngAnnotate())
                 .pipe($.uglify())
-            .pipe($.if(ARGS.sourcemaps, $.sourcemaps.write('./')))
+            .pipe($.sourcemaps.write('./', { addComment: false }))
             .pipe(gulp.dest(PATHS.build))
 }
 
@@ -155,7 +156,7 @@ function watchBundle (entry) {
             .on('error', errorHandler)
             .pipe(source('bundle.js'))
             .pipe(buffer())
-                .pipe($.sourcemaps.init({loadMaps: true}))
+                .pipe($.sourcemaps.init({ loadMaps: true }))
                 .pipe($.sourcemaps.write('./'))
                 .pipe(gulp.dest(PATHS.build))
                 .pipe(browserSync.stream())
@@ -218,7 +219,7 @@ function sass () {
             .pipe($.sass({
                 outputStyle: ARGS.production ? 'compressed' : undefined
             }))
-            .pipe($.autoprefixer())
+            .pipe($.postcss([ autoprefixer({ browsers: ['last 2 versions'] }) ]))
             .pipe($.concat('bundle.css'))
         .pipe($.if(ARGS.sourcemaps, $.sourcemaps.write('./')))
         .pipe(gulp.dest(PATHS.build))
@@ -283,7 +284,12 @@ function compress () {
  * @return {stream}
  */
 function zip () {
-    const glob = path.join(PATHS.build, '*')
+    const glob = [
+        // All files with versioned file name
+        path.join(PATHS.build, '*-*.+(js|js.gz|css|css.gz)'),
+        // Html files
+        path.join(PATHS.build, '*.html')
+    ]
 
     const filename = `${pkg.name}-${git.short()}.zip`
 
