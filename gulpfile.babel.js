@@ -311,7 +311,7 @@ function compress () {
  *
  * @return {stream}
  */
-function zip () {
+function zip (done) {
     if (!ARGS.zip) {
         done()
         return
