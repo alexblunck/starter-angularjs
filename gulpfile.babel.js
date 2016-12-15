@@ -11,7 +11,7 @@ import source from 'vinyl-source-stream'
 import buffer from 'vinyl-buffer'
 import del from 'del'
 import autoprefixer from 'autoprefixer'
-import {argv} from 'yargs'
+import { argv } from 'yargs'
 import browserify from 'browserify'
 import stringify from 'stringify'
 import watchify from 'watchify'
@@ -28,7 +28,8 @@ const $ = require('gulp-load-plugins')()
  */
 const ARGS = {
     production: argv.production,
-    sourcemaps: argv.sourcemaps
+    sourcemaps: argv.sourcemaps,
+    zip: argv.zip
 }
 
 /**
@@ -310,11 +311,13 @@ function compress () {
  * @return {stream}
  */
 function zip () {
+    if (!ARGS.zip) {
+        done()
+        return
+    }
+
     const glob = [
-        // All files with versioned file name
-        path.join(PATHS.build, '*-*.+(js|js.gz|css|css.gz)'),
-        // Html files
-        path.join(PATHS.build, '*.html')
+        path.join(PATHS.build, '*')
     ]
 
     const filename = `${pkg.name}-${git.short()}.zip`
