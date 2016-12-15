@@ -58,6 +58,7 @@ gulp.task('build', gulp.series(
         bundleApp,
         styles,
         copy,
+        assets
     ),
     size,
     revision,
@@ -101,7 +102,7 @@ function bundleApp () {
  * @return {stream}
  */
 function bundle (entry) {
-    let bundler = browserify(entry, { debug: true })
+    let bundler = browserify(entry, { debug: ARGS.sourcemaps })
 
     bundler.transform(stringify, {
         appliesTo: { includeExtensions: ['.html', '.svg'] },
@@ -116,10 +117,10 @@ function bundle (entry) {
         .bundle()
         .pipe(source('bundle.js'))
         .pipe(buffer())
-            .pipe($.sourcemaps.init({ loadMaps: true }))
+            .pipe($.if(ARGS.sourcemaps, $.sourcemaps.init({ loadMaps: true })))
                 .pipe($.ngAnnotate())
                 .pipe($.uglify())
-            .pipe($.sourcemaps.write('./', { addComment: false }))
+            .pipe($.if(ARGS.sourcemaps, $.sourcemaps.write('./', { addComment: false })))
             .pipe(gulp.dest(PATHS.build))
 }
 
