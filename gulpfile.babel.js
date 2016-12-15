@@ -75,6 +75,7 @@ gulp.task('watch', gulp.series(
         bundleAppAndWatch,
         styles,
         copy,
+        assets
     ),
     server,
     watch
@@ -209,6 +210,22 @@ function copy () {
 }
 
 /**
+ * Copy assets into build dir.
+ *
+ * @return {void}
+ */
+function assets () {
+    const glob = [
+        src('assets/**/*')
+    ]
+
+    const dest = path.join(PATHS.build, 'assets')
+
+    return gulp.src(glob)
+        .pipe(gulp.dest(dest))
+        .pipe(browserSync.stream())
+}
+
 /**
  * Compile styles.
  *
