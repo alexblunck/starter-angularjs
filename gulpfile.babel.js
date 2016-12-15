@@ -17,6 +17,9 @@ import stringify from 'stringify'
 import watchify from 'watchify'
 import babelify from 'babelify'
 import browserSync from 'browser-sync'
+import cssImport from 'postcss-import'
+import cssNested from 'postcss-nested'
+import cssVars from 'postcss-simple-vars'
 
 const $ = require('gulp-load-plugins')()
 
@@ -51,8 +54,8 @@ gulp.task('build', gulp.series(
     clean,
     gulp.parallel(
         bundleApp,
-        sass,
-        copy
+        styles,
+        copy,
     ),
     size,
     revision,
@@ -70,8 +73,8 @@ gulp.task('watch', gulp.series(
     clean,
     gulp.parallel(
         bundleAppAndWatch,
-        sass,
-        copy
+        styles,
+        copy,
     ),
     server,
     watch
@@ -180,8 +183,8 @@ function watch (done) {
     ], copy)
 
     gulp.watch([
-        src('**/*.scss')
-    ], sass)
+        src('**/*.css')
+    ], styles)
 
     done()
 }
@@ -206,20 +209,25 @@ function copy () {
 }
 
 /**
- * Compile sass.
+/**
+ * Compile styles.
  *
  * @return {stream}
  */
-function sass () {
-    const glob = src('*.scss')
+function styles () {
+    const glob = src('*.css')
+
+    const plugins = [
+        cssImport(),
+        cssNested(),
+        cssVars(),
+        autoprefixer({ browsers: ['last 2 versions'] })
+    ]
 
     return gulp.src(glob)
         .pipe($.if(ARGS.sourcemaps, $.sourcemaps.init()))
             .pipe($.plumber(errorHandler))
-            .pipe($.sass({
-                outputStyle: ARGS.production ? 'compressed' : undefined
-            }))
-            .pipe($.postcss([ autoprefixer({ browsers: ['last 2 versions'] }) ]))
+            .pipe($.postcss(plugins))
             .pipe($.concat('bundle.css'))
         .pipe($.if(ARGS.sourcemaps, $.sourcemaps.write('./')))
         .pipe(gulp.dest(PATHS.build))
