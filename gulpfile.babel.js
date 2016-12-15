@@ -43,7 +43,8 @@ const PATHS = {
  * Config
  */
 const CONFIG = {
-    proxyHost: 'localhost:8095'
+    proxyHost: 'localhost:2999',
+    port: 3000
 }
 
 /**
@@ -342,7 +343,7 @@ function clean () {
 function server (done) {
     let options = {
         browser: 'google chrome',
-        port: 3095,
+        port: CONFIG.port,
         online: false,
         logSnippet: false,
         notify: false,
