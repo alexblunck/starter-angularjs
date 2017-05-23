@@ -5,7 +5,7 @@
 
 import pkg from './package.json'
 import path from 'path'
-import git from 'git-rev-sync'
+import git from 'git-repo-info'
 import gulp from 'gulp'
 import source from 'vinyl-source-stream'
 import buffer from 'vinyl-buffer'
@@ -17,9 +17,6 @@ import stringify from 'stringify'
 import watchify from 'watchify'
 import babelify from 'babelify'
 import browserSync from 'browser-sync'
-import cssImport from 'postcss-import'
-import cssNested from 'postcss-nested'
-import cssVars from 'postcss-simple-vars'
 
 const $ = require('gulp-load-plugins')()
 
@@ -27,9 +24,7 @@ const $ = require('gulp-load-plugins')()
  * Arguments
  */
 const ARGS = {
-    production: argv.production,
-    sourcemaps: argv.sourcemaps,
-    zip: argv.zip
+    production: argv.production
 }
 
 /**
@@ -56,7 +51,7 @@ gulp.task('build', gulp.series(
     clean,
     gulp.parallel(
         bundleApp,
-        styles,
+        sass,
         copy,
         assets
     ),
@@ -76,7 +71,7 @@ gulp.task('watch', gulp.series(
     clean,
     gulp.parallel(
         bundleAppAndWatch,
-        styles,
+        sass,
         copy,
         assets
     ),
@@ -88,7 +83,7 @@ gulp.task('watch', gulp.series(
  * Bundle app with ./src/index.js as the
  * entry point.
  *
- * @return {stream}
+ * @return {Stream}
  */
 function bundleApp () {
     return bundle(src('index.js'))
@@ -97,12 +92,12 @@ function bundleApp () {
 /**
  * Use browserify to bundle the application..
  *
- * @param  {string} entry - Path to entry file
+ * @param  {String} entry - Path to entry file
  *
- * @return {stream}
+ * @return {Stream}
  */
 function bundle (entry) {
-    let bundler = browserify(entry, { debug: ARGS.sourcemaps })
+    let bundler = browserify(entry, { debug: true })
 
     bundler.transform(stringify, {
         appliesTo: { includeExtensions: ['.html', '.svg'] },
@@ -117,10 +112,10 @@ function bundle (entry) {
         .bundle()
         .pipe(source('bundle.js'))
         .pipe(buffer())
-            .pipe($.if(ARGS.sourcemaps, $.sourcemaps.init({ loadMaps: true })))
+            .pipe($.sourcemaps.init({ loadMaps: true }))
                 .pipe($.ngAnnotate())
                 .pipe($.uglify())
-            .pipe($.if(ARGS.sourcemaps, $.sourcemaps.write('./', { addComment: false })))
+            .pipe($.sourcemaps.write('./', { addComment: false }))
             .pipe(gulp.dest(PATHS.build))
 }
 
@@ -128,7 +123,7 @@ function bundle (entry) {
  * Bundle app with ./src/index.js as the
  * entry point, watch for changes and rebundle.
  *
- * @return {stream}
+ * @return {Stream}
  */
 function bundleAppAndWatch () {
     return watchBundle(src('index.js'))
@@ -138,9 +133,9 @@ function bundleAppAndWatch () {
  * Use watchify / browserify to bundle the
  * application, watch for changes and rebundle.
  *
- * @param  {string} entry - Path to entry file
+ * @param  {String} entry - Path to entry file
  *
- * @return {stream}
+ * @return {Stream}
  */
 function watchBundle (entry) {
     let options = watchify.args
@@ -179,7 +174,7 @@ function watchBundle (entry) {
  *
  * @param  {Function} done
  *
- * @return {stream}
+ * @return {Stream}
  */
 function watch (done) {
     gulp.watch([
@@ -187,16 +182,19 @@ function watch (done) {
     ], copy)
 
     gulp.watch([
-        src('**/*.css')
-    ], styles)
+        src('assets/**/*')
+    ], assets)
+
+    gulp.watch([
+        src('**/*.scss'),
+        'lib/**/*.scss'
+    ], sass)
 
     done()
 }
 
 /**
  * Copy files into build dir.
- *
- * @return {void}
  */
 function copy () {
     const glob = [
@@ -214,8 +212,6 @@ function copy () {
 
 /**
  * Copy assets into build dir.
- *
- * @return {void}
  */
 function assets () {
     const glob = [
@@ -230,26 +226,22 @@ function assets () {
 }
 
 /**
- * Compile styles.
+ * Compile sass.
  *
- * @return {stream}
+ * @return {Stream}
  */
-function styles () {
-    const glob = src('*.css')
-
-    const plugins = [
-        cssImport(),
-        cssNested(),
-        cssVars(),
-        autoprefixer({ browsers: ['last 2 versions'] })
-    ]
+function sass () {
+    const glob = src('*.scss')
 
     return gulp.src(glob)
-        .pipe($.if(ARGS.sourcemaps, $.sourcemaps.init()))
+        .pipe($.if(!ARGS.production, $.sourcemaps.init()))
             .pipe($.plumber(errorHandler))
-            .pipe($.postcss(plugins))
+            .pipe($.sass({
+                outputStyle: ARGS.production ? 'compressed' : undefined
+            }))
+            .pipe($.postcss([ autoprefixer({ browsers: ['last 2 versions'] }) ]))
             .pipe($.concat('bundle.css'))
-        .pipe($.if(ARGS.sourcemaps, $.sourcemaps.write('./')))
+        .pipe($.if(!ARGS.production, $.sourcemaps.write('./')))
         .pipe(gulp.dest(PATHS.build))
         .pipe(browserSync.stream({ match: '**/*.css' }))
 }
@@ -257,7 +249,7 @@ function styles () {
 /**
  * Version all js & css files in the build dir.
  *
- * @return {stream}
+ * @return {Stream}
  */
 function revision () {
     const glob = [
@@ -277,7 +269,7 @@ function revision () {
  * "rev-manifest.json" created by the "revision"
  * task.
  *
- * @return {stream}
+ * @return {Stream}
  */
 function revisionReplace () {
     const manifest = path.join(PATHS.build, 'rev-manifest.json')
@@ -292,7 +284,7 @@ function revisionReplace () {
  * Use gzip to compress all js & css files in
  * the build dir.
  *
- * @return {stream}
+ * @return {Stream}
  */
 function compress () {
     const glob = [
@@ -309,19 +301,18 @@ function compress () {
  * Archive the contents on the build dir
  * into a zip file.
  *
- * @return {stream}
+ * @return {Stream}
  */
-function zip (done) {
-    if (!ARGS.zip) {
-        done()
-        return
-    }
-
+function zip () {
     const glob = [
-        path.join(PATHS.build, '*')
+        // All files with versioned file name
+        path.join(PATHS.build, '*-*.+(js|js.gz|css|css.gz)'),
+        // Html files
+        path.join(PATHS.build, '*.html')
     ]
 
-    const filename = `${pkg.name}-${git.short()}.zip`
+    const sha = git().sha.substr(0, 7)
+    const filename = `${pkg.name}-${sha}.zip`
 
     return gulp.src(glob)
         .pipe($.zip(filename))
@@ -330,8 +321,6 @@ function zip (done) {
 
 /**
  * Delete build dir.
- *
- * @return {void}
  */
 function clean () {
     return del(PATHS.build)
@@ -342,7 +331,7 @@ function clean () {
  *
  * @param  {function} done
  *
- * @return {stream}
+ * @return {Stream}
  */
 function server (done) {
     let options = {
@@ -374,7 +363,7 @@ function server (done) {
 /**
  * Log the size of files in build dir.
  *
- * @return {stream}
+ * @return {Stream}
  */
 function size () {
     const glob = path.join(PATHS.build, '*')
@@ -387,9 +376,7 @@ function size () {
 /**
  * gulp-plumber errorHandler.
  *
- * @param  {string} err
- *
- * @return {this}
+ * @param {String} err
  */
 function errorHandler (err) {
     $.util.beep()
@@ -401,9 +388,9 @@ function errorHandler (err) {
 /**
  * Helper to join file path with src path
  *
- * @param  {string} p Filepath
+ * @param  {String} p Filepath
  *
- * @return {string}
+ * @return {String}
  */
 function src (p) {
     return path.join(PATHS.src, p)
