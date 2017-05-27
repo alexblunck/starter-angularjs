@@ -5,6 +5,7 @@ pipeline {
     // Build
     stage('Build') {
       steps {
+        pwd
         echo 'Building (Updated 2)...'
       }
     }
