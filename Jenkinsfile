@@ -13,7 +13,7 @@ pipeline {
     // Upload
     stage('Upload') {
       steps {
-        echo 'Uploading...'
+        sh 'ls -l'
       }
     }
   }
