@@ -5,7 +5,7 @@ pipeline {
     // Build
     stage('Build') {
       steps {
-        pwd
+        sh 'pwd'
         echo 'Building (Updated 2)...'
       }
     }
