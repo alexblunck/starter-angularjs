@@ -5,8 +5,8 @@ pipeline {
     // Build
     stage('Build') {
       steps {
-        sh 'pwd'
-        echo 'Building (Updated 2)...'
+        sh 'npm i'
+        sh 'npm run build'
       }
     }
     
