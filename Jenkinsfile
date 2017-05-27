@@ -2,14 +2,14 @@ pipeline {
   agent any
   
   stages {
-    # Build
+    // Build
     stage('Build') {
       steps {
         echo 'Building...'
       }
     }
     
-    # Upload
+    // Upload
     stage('Upload') {
       steps {
         echo 'Uploading...'
