@@ -16,6 +16,7 @@
   "author": "Alexander Blunck",
   "license": "MIT",
   "dependencies": {
+    "@uirouter/angularjs": "1.0.3",
     "angular": "1.6.4",
     "sanitize.css": "5.0.0"
   },

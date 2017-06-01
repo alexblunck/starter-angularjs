@@ -1,6 +1,7 @@
 <!DOCTYPE html>
 <html ng-app="app">
     <head>
+        <base href="/">
         <meta charset="utf-8">
         <meta name="viewport" content="width=device-width, initial-scale=1">
         <title>starter-angular</title>
@@ -8,9 +9,8 @@
         <!-- CSS -->
         <link rel="stylesheet" type="text/css" href="bundle.css">
     </head>
-    <body ng-controller="AppCtrl as $ctrl">
-
-        <h1 ng-bind="$ctrl.name"></h1>
+    <body>
+        <ui-view></ui-view>
 
         <!-- JS -->
         <script src="bundle.js"></script>
