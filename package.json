@@ -16,19 +16,19 @@
   "author": "Alexander Blunck",
   "license": "MIT",
   "dependencies": {
-    "@uirouter/angularjs": "1.0.3",
-    "angular": "1.6.4",
+    "@uirouter/angularjs": "1.0.5",
+    "angular": "1.6.5",
     "sanitize.css": "5.0.0"
   },
   "devDependencies": {
-    "autoprefixer": "7.1.1",
-    "babel-core": "6.24.1",
+    "autoprefixer": "7.1.2",
+    "babel-core": "6.25.0",
     "babel-preset-es2015": "6.24.1",
     "babelify": "7.3.0",
     "browser-sync": "2.18.12",
     "browserify": "^14.4.0",
-    "del": "2.2.2",
-    "eslint": "3.19.0",
+    "del": "3.0.0",
+    "eslint": "4.1.1",
     "express": "4.15.3",
     "git-repo-info": "1.4.1",
     "gulp": "github:gulpjs/gulp#4.0",
@@ -54,6 +54,6 @@
     "vinyl-buffer": "1.0.0",
     "vinyl-source-stream": "1.1.0",
     "watchify": "3.9.0",
-    "yargs": "8.0.1"
+    "yargs": "8.0.2"
   }
 }
