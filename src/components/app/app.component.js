@@ -14,6 +14,8 @@ class AppCtrl {
 
     $onInit() {
         this.name = 'starter-angular'
+
+        console.log('Are source maps working?')
     }
 
 }
