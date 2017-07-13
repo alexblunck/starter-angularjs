@@ -2,6 +2,8 @@
  * Module: app
  */
 
+import './index.scss'
+
 import angular from 'angular'
 import router from '@uirouter/angularjs'
 
