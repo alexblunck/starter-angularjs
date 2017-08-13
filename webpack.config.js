@@ -1,17 +1,11 @@
-/**
- * Webpack
- * Config
- */
+const pkg = require('./package.json')
 
-const merge = require('webpack-merge')
-const common = require('./webpack.common')
-const dev = require('./webpack.dev')
-const prod = require('./webpack.prod')
+const config = require('./lib/webpack-config/ng1')
 
-module.exports = function (env = {}) {
-    if (env.production) {
-        return merge(common, prod)
-    } else {
-        return merge(common, dev)
-    }
+module.exports = function (env) {
+    return config(env, {
+        name: pkg.name,
+        root: __dirname,
+        port: 3000
+    })
 }
