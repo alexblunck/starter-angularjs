@@ -1,3 +1,0 @@
-[submodule "lib/webpack-config"]
-	path = lib/webpack-config
-	url = git@github.com:alexblunck/webpack-config.git
