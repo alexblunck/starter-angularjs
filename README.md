@@ -1,5 +1,5 @@
 # starter-angular
-Starting point for AngularJs 1.6+ applications using es6 & webpack.
+Starting point for AngularJs 1.7 applications
 
 ## Workflow
 
