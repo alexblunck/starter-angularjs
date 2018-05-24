@@ -1,7 +1,7 @@
 {
   "name": "starter-angularjs",
   "version": "1.0.0",
-  "description": "Starting point for AngularJs 1.6+ applications using es6 & webpack",
+  "description": "Starting point for AngularJs 1.7 applications",
   "main": "src/index.js",
   "scripts": {
     "start": "webpack-scripts start",
@@ -12,12 +12,12 @@
   "author": "Alexander Blunck",
   "license": "MIT",
   "dependencies": {
-    "@uirouter/angularjs": "1.0.15",
-    "angular": "1.6.10",
-    "sanitize.css": "5.0.0"
+    "@uirouter/angularjs": "1.0.18",
+    "angular": "1.7.0"
   },
   "devDependencies": {
-    "@blunck/webpack-scripts": "0.1.0",
-    "eslint": "4.19.1"
+    "@blunck/webpack-scripts": "1.5.0",
+    "eslint": "4.19.1",
+    "sass-lint": "1.12.1"
   }
 }

@@ -13,7 +13,7 @@ import directives from './directives'
 import filters from './filters'
 import services from './services'
 
-import AppComponent from './components/app/app.component'
+import AppComponent from './components/app/app'
 
 angular
     .module('app', [
