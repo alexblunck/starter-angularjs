@@ -13,10 +13,10 @@
   "license": "MIT",
   "dependencies": {
     "@uirouter/angularjs": "1.0.18",
-    "angular": "1.7.0"
+    "angular": "1.7.2"
   },
   "devDependencies": {
-    "@blunck/webpack-scripts": "1.5.0",
+    "@blunck/webpack-scripts": "1.7.0",
     "eslint": "4.19.1",
     "sass-lint": "1.12.1"
   }
