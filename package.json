@@ -12,12 +12,12 @@
   "author": "Alexander Blunck",
   "license": "MIT",
   "dependencies": {
-    "@uirouter/angularjs": "1.0.18",
-    "angular": "1.7.2"
+    "@uirouter/angularjs": "1.0.20",
+    "angular": "1.7.3"
   },
   "devDependencies": {
-    "@blunck/webpack-scripts": "1.7.0",
-    "eslint": "4.19.1",
+    "@blunck/webpack-scripts": "1.11.0",
+    "eslint": "5.4.0",
     "sass-lint": "1.12.1"
   }
 }
